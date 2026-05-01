@@ -3,7 +3,7 @@ import pdfplumber
 import re
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-import anthropic
+from groq import Groq
 
 # Extract all text from uploaded PDF
 def extract_text_from_pdf(pdf_file):
@@ -34,9 +34,9 @@ def find_missing_keywords(resume_text, jd_text):
     missing = jd_words - resume_words - common_stopwords
     return sorted(list(missing))[:15]
 
-# Generate improved resume using Claude AI
+# Generate improved resume using Groq (free)
 def generate_improved_resume(resume_text, jd_text, missing_keywords):
-    client = anthropic.Anthropic(api_key=st.secrets["ANTHROPIC_API_KEY"])
+    client = Groq(api_key=st.secrets["GROQ_API_KEY"])
 
     prompt = f"""You are a professional resume writer. Rewrite the candidate's resume to fit exactly ONE full A4 page.
 
@@ -68,7 +68,7 @@ TECHNICAL SKILLS
 List skills as short bullet points grouped by category. Each bullet point is one line. Example:
 - Programming Languages: Python, Java, C++
 - Web Technologies: HTML, CSS, JavaScript, React
-- Tools & Platforms: Git, GitHub, VS Code, Streamlit
+- Tools and Platforms: Git, GitHub, VS Code, Streamlit
 - Databases: MySQL, Firebase
 
 PROJECTS
@@ -111,21 +111,22 @@ CONCLUSION
 Write 2 to 3 full sentences. Mention the specific job role from the job description. Express genuine interest in contributing to the company. Mention one or two key skills that make the candidate a strong fit for this particular role.
 
 IMPORTANT:
-- The total content must fill one complete A4 page — write enough in each section to fill the page properly
-- Professional Summary, Conclusion must be in full sentence paragraph format
+- The total content must fill one complete A4 page
+- Professional Summary and Conclusion must be in full sentence paragraph format
 - Technical Skills, Projects, Achievements, Languages must be in bullet point format
 - Education must be in the structured format shown above
-- Do not add any section that is not listed above
+- Do not add any section not listed above
 - Do not use any symbols except hyphen (-) for bullets
 
 Write the full resume now:"""
 
-    message = client.messages.create(
-        model="claude-sonnet-4-20250514",
+    response = client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=[{"role": "user", "content": prompt}],
         max_tokens=2000,
-        messages=[{"role": "user", "content": prompt}]
+        temperature=0.7
     )
-    return message.content[0].text
+    return response.choices[0].message.content
 
 # ─────────────────────────────────────────
 #  Streamlit UI
@@ -223,7 +224,7 @@ if st.button("Analyse Match", use_container_width=True, type="primary"):
                 "Here is a professionally rewritten version of your resume tailored to this job:"
             )
 
-            with st.spinner("Generating your improved resume... please wait 20-30 seconds..."):
+            with st.spinner("Generating your improved resume... please wait 15-20 seconds..."):
                 try:
                     improved_resume = generate_improved_resume(
                         resume_text, jd_text, missing_keywords
