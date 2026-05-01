@@ -8,7 +8,6 @@ from fpdf import FPDF
 import tempfile
 import os
 
-# Extract all text from uploaded PDF
 def extract_text_from_pdf(pdf_file):
     text = ""
     with pdfplumber.open(pdf_file) as pdf:
@@ -18,14 +17,12 @@ def extract_text_from_pdf(pdf_file):
                 text += extracted + " "
     return text.strip()
 
-# Calculate match score using TF-IDF
 def calculate_match_score(resume_text, jd_text):
     vectorizer = TfidfVectorizer()
     vectors = vectorizer.fit_transform([resume_text, jd_text])
     score = cosine_similarity(vectors[0], vectors[1])
     return round(float(score[0][0]) * 100, 1)
 
-# Find keywords in JD that are missing from resume
 def find_missing_keywords(resume_text, jd_text):
     common_stopwords = {
         "with", "that", "this", "from", "have", "will", "your",
@@ -37,7 +34,6 @@ def find_missing_keywords(resume_text, jd_text):
     missing = jd_words - resume_words - common_stopwords
     return sorted(list(missing))[:15]
 
-# Generate improved resume using Groq
 def generate_improved_resume(resume_text, jd_text, missing_keywords):
     client = Groq(api_key=st.secrets["GROQ_API_KEY"])
 
@@ -57,79 +53,81 @@ OUTPUT RULES — follow every rule strictly:
 1. Use ONLY real details from the candidate's resume. Never invent fake experience, fake companies, or fake projects.
 2. Naturally weave in as many missing keywords as possible wherever they genuinely fit.
 3. Return plain text only. No markdown. No asterisks. No hashtags. No bold symbols. No special characters except hyphen (-) for bullets.
-4. The total resume length must fill 1 to 1.5 A4 pages when printed — enough content to look complete but not overcrowded.
+4. The total resume length must fill 1 to 1.5 A4 pages when printed.
 
 SECTION BY SECTION FORMAT:
 
---- SECTION 1: CONTACT INFORMATION ---
+CONTACT INFORMATION
 Write the candidate's name on the first line in CAPITALS.
 Then write each of the following on a separate line: email, phone number, LinkedIn URL, GitHub URL (only if present in resume).
-No label needed for this section — just the raw contact details.
 
---- SECTION 2: PROFESSIONAL SUMMARY ---
+PROFESSIONAL SUMMARY
 Section heading: PROFESSIONAL SUMMARY
-Write exactly 3 clear, professional sentences in paragraph form.
+Write exactly 3 clear professional sentences in paragraph form.
 Sentence 1: Who the candidate is and their academic background.
 Sentence 2: Their key technical skills and how they relate to this specific job role.
-Sentence 3: Their career goal and availability for this specific internship/job role mentioned in the JD.
-Keep language simple, honest, and confident. Do not use fancy or complex words.
+Sentence 3: Their career goal and availability for this specific internship or job role mentioned in the JD.
+Keep language simple, honest, and confident.
 
---- SECTION 3: TECHNICAL SKILLS ---
+TECHNICAL SKILLS
 Section heading: TECHNICAL SKILLS
-List skills as clean bullet points grouped by category. Use this format exactly:
+List skills as clean bullet points grouped by category:
 - Programming Languages: [list them]
 - Web Technologies: [list them]
 - Tools and Platforms: [list them]
 - Databases: [list them]
 - Operating Systems: [only if relevant]
-Only include skill categories that exist in the candidate's resume. Maximum 6 bullet points total.
+Only include categories that exist in the candidate's resume. Maximum 6 bullet points.
 
---- SECTION 4: PROJECTS ---
+PROJECTS
 Section heading: PROJECTS
-For each project from the candidate's resume, write:
-Line 1: Project name only (no bullet, just the name)
-Line 2: - One sentence clearly explaining what the project does and its purpose.
-Line 3: - One sentence listing the technologies used and the result or outcome.
-Leave exactly one blank line between projects.
-Maximum 3 projects. Only 2 bullet points per project. Keep sentences short and clear.
+For each project write:
+Line 1: Project name only (no bullet)
+Line 2: - One sentence explaining what the project does and its purpose.
+Line 3: - One sentence listing technologies used and the outcome.
+Leave one blank line between projects. Maximum 3 projects. Only 2 bullet points per project.
 
---- SECTION 5: EDUCATION ---
+EDUCATION
 Section heading: EDUCATION
-Write each level as a separate block with one blank line between them.
-Format for each block:
-Degree name
-College/School name, City
-Year range or year of passing
-CGPA: X.X / 10 OR Percentage: XX%
+Write 3 blocks in this order with one blank line between each:
 
-Write exactly 3 blocks in this order: B.Tech first, then Intermediate (Class 12), then Secondary School Certificate (Class 10).
-If any detail is missing from the resume, write "Details not provided" for that line.
+B.Tech - [Branch name]
+[College name], [City]
+[Year] - [Year]
+CGPA: [value] / 10
 
---- SECTION 6: ACHIEVEMENTS AND CERTIFICATIONS ---
+Intermediate (Class 12)
+[School name], [City]
+[Year]
+Percentage: [value]%
+
+Secondary School Certificate (Class 10)
+[School name], [City]
+[Year]
+Percentage: [value]%
+
+ACHIEVEMENTS AND CERTIFICATIONS
 Section heading: ACHIEVEMENTS AND CERTIFICATIONS
-Write each achievement and each certification as a separate bullet point.
-Format: - [Achievement or certification description in one clear sentence]
-Keep each point short — maximum 15 words per bullet.
-Maximum 5 bullet points total.
+Write each as a separate bullet point:
+- [One clear sentence, maximum 15 words]
+Maximum 5 bullet points.
 
---- SECTION 7: LANGUAGES KNOWN ---
+LANGUAGES KNOWN
 Section heading: LANGUAGES KNOWN
-Write each language as a bullet point:
-- [Language] ([Proficiency level])
-Include Telugu and English always. Add any other language found in the resume.
+- [Language] ([Proficiency])
+Always include Telugu and English. Add others from resume.
 
---- SECTION 8: CONCLUSION ---
+CONCLUSION
 Section heading: CONCLUSION
 Write exactly 2 to 3 sentences.
-Sentence 1: Express genuine enthusiasm for the specific job role mentioned in the JD and name the company if available.
-Sentence 2: Mention 1 or 2 specific skills from the candidate's resume that directly match the JD requirements.
-Sentence 3: Express commitment and readiness to contribute.
-Keep it professional, warm, and specific to this job. Do not use generic phrases.
+Sentence 1: Enthusiasm for the specific job role and company name if available.
+Sentence 2: One or two specific skills that match the JD.
+Sentence 3: Commitment and readiness to contribute.
 
 SPACING RULES:
-- Leave exactly one blank line between each section heading and its content.
-- Leave exactly one blank line between sections.
-- Do not add extra blank lines inside sections.
+- One blank line between each section heading and its content.
+- One blank line between sections.
+- No extra blank lines inside sections.
 
 Write the complete resume now:"""
 
@@ -141,60 +139,66 @@ Write the complete resume now:"""
     )
     return response.choices[0].message.content
 
-# Generate PDF from resume text
 def generate_pdf(resume_text):
     pdf = FPDF()
     pdf.add_page()
-    pdf.set_margins(20, 20, 20)
-    pdf.set_auto_page_break(auto=True, margin=20)
-
-    lines = resume_text.split('\n')
+    pdf.set_margins(15, 15, 15)
+    pdf.set_auto_page_break(auto=True, margin=15)
 
     section_headings = [
         "PROFESSIONAL SUMMARY", "TECHNICAL SKILLS", "PROJECTS",
         "EDUCATION", "ACHIEVEMENTS AND CERTIFICATIONS",
-        "LANGUAGES KNOWN", "CONCLUSION", "CONTACT INFORMATION"
+        "ACHIEVEMENTS & CERTIFICATIONS", "LANGUAGES KNOWN",
+        "CONCLUSION", "CONTACT INFORMATION"
     ]
+
+    lines = resume_text.split('\n')
+    first_nonblank_done = False
 
     for line in lines:
         stripped = line.strip()
 
         if not stripped:
-            pdf.ln(3)
+            pdf.ln(2)
             continue
 
-        # Detect if it's the name (first non-empty line = all caps and short)
-        if stripped.isupper() and len(stripped.split()) <= 4 and stripped not in section_headings:
-            pdf.set_font("Helvetica", "B", 14)
+        # First non-empty line = candidate name
+        if not first_nonblank_done:
+            first_nonblank_done = True
+            pdf.set_font("Helvetica", "B", 13)
             pdf.set_text_color(0, 0, 0)
-            pdf.cell(0, 8, stripped, ln=True, align='C')
+            pdf.cell(0, 7, stripped, ln=True, align='C')
             pdf.ln(1)
+            continue
 
         # Section headings
-        elif stripped in section_headings:
-            pdf.ln(2)
-            pdf.set_font("Helvetica", "B", 10)
+        if stripped.upper() in [s.upper() for s in section_headings]:
+            pdf.ln(3)
+            pdf.set_font("Helvetica", "B", 9)
             pdf.set_text_color(0, 0, 0)
-            pdf.cell(0, 6, stripped, ln=True)
+            pdf.cell(0, 5, stripped.upper(), ln=True)
             pdf.set_draw_color(0, 0, 0)
             pdf.set_line_width(0.3)
-            pdf.line(20, pdf.get_y(), 190, pdf.get_y())
+            pdf.line(15, pdf.get_y(), 195, pdf.get_y())
             pdf.ln(2)
+            continue
 
         # Bullet points
-        elif stripped.startswith("- "):
+        if stripped.startswith("- "):
             pdf.set_font("Helvetica", "", 9)
             pdf.set_text_color(40, 40, 40)
-            pdf.set_x(24)
-            pdf.multi_cell(0, 5.5, stripped, align='L')
+            content = stripped[2:]
+            pdf.set_x(19)
+            pdf.cell(4, 5, "-", ln=False)
+            pdf.set_x(23)
+            pdf.multi_cell(172, 5, content, align='L')
+            continue
 
-        # Contact lines and other content
-        else:
-            pdf.set_font("Helvetica", "", 9)
-            pdf.set_text_color(40, 40, 40)
-            pdf.multi_cell(0, 5.5, stripped, align='L')
+        # Regular text
+        pdf.set_font("Helvetica", "", 9)
+        pdf.set_text_color(40, 40, 40)
+        pdf.multi_cell(180, 5, stripped, align='L')
 
-    # Save to temp file
     tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
     pdf.output(tmp.name)
     return tmp.name
@@ -246,21 +250,17 @@ if st.button("Analyse Match", use_container_width=True, type="primary"):
     else:
         with st.spinner("Analysing your resume..."):
             resume_text = extract_text_from_pdf(uploaded_file)
-
             if not resume_text:
                 st.error("Could not read text from the PDF. Try a different file.")
                 st.stop()
-
             score = calculate_match_score(resume_text, jd_text)
             missing_keywords = find_missing_keywords(resume_text, jd_text)
 
-        # ── Results ──
         st.subheader("Results")
         m1, m2, m3 = st.columns(3)
         m1.metric("Match Score", f"{score}%")
         m2.metric("Resume Words", len(resume_text.split()))
         m3.metric("Missing Keywords", len(missing_keywords))
-
         st.progress(int(score) / 100)
 
         if score >= 90:
@@ -274,10 +274,8 @@ if st.button("Analyse Match", use_container_width=True, type="primary"):
 
         st.divider()
 
-        # ── Missing Keywords ──
         st.subheader("Missing Keywords")
         st.markdown("These words appear in the JD but are missing from your resume:")
-
         if missing_keywords:
             cols = st.columns(5)
             for i, word in enumerate(missing_keywords):
@@ -287,7 +285,6 @@ if st.button("Analyse Match", use_container_width=True, type="primary"):
 
         st.divider()
 
-        # ── AI Resume Generator (only if score < 90) ──
         if score < 90:
             st.subheader("✨ AI-Generated Improved Resume")
             st.markdown(
@@ -301,7 +298,7 @@ if st.button("Analyse Match", use_container_width=True, type="primary"):
                         resume_text, jd_text, missing_keywords
                     )
 
-                    # ── A4 styled display ──
+                    # A4 display
                     st.markdown("""
                     <style>
                     .a4-resume {
@@ -330,9 +327,9 @@ if st.button("Analyse Match", use_container_width=True, type="primary"):
 
                     st.divider()
 
-                    # ── PDF Download ──
+                    # PDF Download
                     st.subheader("⬇ Download Generated Resume as PDF")
-                    st.markdown("Click the button below to download your improved resume as a ready-to-send PDF file.")
+                    st.markdown("Click the button below to download your improved resume as a ready-to-send PDF.")
 
                     with st.spinner("Preparing your PDF..."):
                         pdf_path = generate_pdf(improved_resume)
@@ -341,7 +338,7 @@ if st.button("Analyse Match", use_container_width=True, type="primary"):
                         os.unlink(pdf_path)
 
                     st.download_button(
-                        label="Download Resume as PDF",
+                        label="⬇ Download Resume as PDF",
                         data=pdf_bytes,
                         file_name="improved_resume.pdf",
                         mime="application/pdf",
@@ -350,18 +347,17 @@ if st.button("Analyse Match", use_container_width=True, type="primary"):
 
                     st.divider()
 
-                    # ── Copy box ──
+                    # Copy box
                     st.subheader("Copy Resume Text")
                     st.text_area(
                         "Select all and copy (Ctrl+A then Ctrl+C):",
                         value=improved_resume,
-                        height=200,
-                        help="Select all text (Ctrl+A) and copy (Ctrl+C)"
+                        height=200
                     )
 
                     st.info(
                         "How to use: Download the PDF above and send directly — "
-                        "or copy the text, paste into Word/Google Docs, format, and save as PDF."
+                        "or copy the text, paste into Word or Google Docs, format, and save as PDF."
                     )
 
                 except Exception as e:
