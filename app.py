@@ -34,6 +34,32 @@ def find_missing_keywords(resume_text, jd_text):
     missing = jd_words - resume_words - common_stopwords
     return sorted(list(missing))[:15]
 
+def clean_text_for_pdf(text):
+    replacements = {
+        "\u2018": "'", "\u2019": "'",
+        "\u201c": '"', "\u201d": '"',
+        "\u2013": "-", "\u2014": "-",
+        "\u2022": "-", "\u2026": "...",
+        "\u00e9": "e", "\u00e8": "e",
+        "\u00e0": "a", "\u00e2": "a",
+        "\u00f4": "o", "\u00fb": "u",
+        "\u00ee": "i", "\u00e7": "c",
+        "\u2010": "-", "\u2011": "-",
+        "\u00b7": "-", "\u00a0": " ",
+        "\u00bc": "1/4", "\u00bd": "1/2",
+        "\u00be": "3/4", "\u00d7": "x",
+        "\u00f7": "/",
+    }
+    for unicode_char, ascii_char in replacements.items():
+        text = text.replace(unicode_char, ascii_char)
+    result = ""
+    for char in text:
+        if ord(char) < 128:
+            result += char
+        else:
+            result += " "
+    return result
+
 def generate_improved_resume(resume_text, jd_text, missing_keywords):
     client = Groq(api_key=st.secrets["GROQ_API_KEY"])
 
@@ -48,88 +74,67 @@ JOB DESCRIPTION:
 MISSING KEYWORDS TO INCLUDE NATURALLY:
 {', '.join(missing_keywords)}
 
-OUTPUT RULES — follow every rule strictly:
+OUTPUT RULES:
+1. Use ONLY real details from the candidate's resume. Never invent anything.
+2. Naturally include missing keywords wherever they genuinely fit.
+3. Return plain text only. No markdown. No asterisks. No hashtags. No bold symbols.
+4. Use only basic ASCII characters. Use straight apostrophes and quotes only. Use hyphen (-) for bullets.
+5. The total resume must fill 1 to 1.5 A4 pages.
 
-1. Use ONLY real details from the candidate's resume. Never invent fake experience, fake companies, or fake projects.
-2. Naturally weave in as many missing keywords as possible wherever they genuinely fit.
-3. Return plain text only. No markdown. No asterisks. No hashtags. No bold symbols. No special characters except hyphen (-) for bullets.
-4. The total resume length must fill 1 to 1.5 A4 pages when printed.
-
-SECTION BY SECTION FORMAT:
+SECTION FORMAT:
 
 CONTACT INFORMATION
-Write the candidate's name on the first line in CAPITALS.
-Then write each of the following on a separate line: email, phone number, LinkedIn URL, GitHub URL (only if present in resume).
+Candidate name on first line in CAPITALS.
+Then email, phone, LinkedIn, GitHub each on a separate line.
 
 PROFESSIONAL SUMMARY
-Section heading: PROFESSIONAL SUMMARY
-Write exactly 3 clear professional sentences in paragraph form.
-Sentence 1: Who the candidate is and their academic background.
-Sentence 2: Their key technical skills and how they relate to this specific job role.
-Sentence 3: Their career goal and availability for this specific internship or job role mentioned in the JD.
-Keep language simple, honest, and confident.
+Write exactly 3 simple clear sentences.
+Sentence 1: Academic background and who the candidate is.
+Sentence 2: Key technical skills relevant to the job role.
+Sentence 3: Career goal and availability for this specific role.
 
 TECHNICAL SKILLS
-Section heading: TECHNICAL SKILLS
-List skills as clean bullet points grouped by category:
-- Programming Languages: [list them]
-- Web Technologies: [list them]
-- Tools and Platforms: [list them]
-- Databases: [list them]
-- Operating Systems: [only if relevant]
-Only include categories that exist in the candidate's resume. Maximum 6 bullet points.
+- Programming Languages: [list]
+- Web Technologies: [list]
+- Tools and Platforms: [list]
+- Databases: [list]
+Maximum 6 bullet points. Only include what exists in the resume.
 
 PROJECTS
-Section heading: PROJECTS
-For each project write:
-Line 1: Project name only (no bullet)
-Line 2: - One sentence explaining what the project does and its purpose.
-Line 3: - One sentence listing technologies used and the outcome.
-Leave one blank line between projects. Maximum 3 projects. Only 2 bullet points per project.
+Project name on one line (no bullet).
+- One sentence: what the project does and its purpose.
+- One sentence: technologies used and outcome.
+One blank line between projects. Maximum 3 projects.
 
 EDUCATION
-Section heading: EDUCATION
-Write 3 blocks in this order with one blank line between each:
-
-B.Tech - [Branch name]
-[College name], [City]
+B.Tech - [Branch]
+[College], [City]
 [Year] - [Year]
 CGPA: [value] / 10
 
 Intermediate (Class 12)
-[School name], [City]
+[School], [City]
 [Year]
 Percentage: [value]%
 
 Secondary School Certificate (Class 10)
-[School name], [City]
+[School], [City]
 [Year]
 Percentage: [value]%
 
 ACHIEVEMENTS AND CERTIFICATIONS
-Section heading: ACHIEVEMENTS AND CERTIFICATIONS
-Write each as a separate bullet point:
-- [One clear sentence, maximum 15 words]
+- [One sentence, max 15 words]
 Maximum 5 bullet points.
 
 LANGUAGES KNOWN
-Section heading: LANGUAGES KNOWN
-- [Language] ([Proficiency])
-Always include Telugu and English. Add others from resume.
+- Telugu (Native)
+- English (Professional Proficiency)
+Add others from resume.
 
 CONCLUSION
-Section heading: CONCLUSION
-Write exactly 2 to 3 sentences.
-Sentence 1: Enthusiasm for the specific job role and company name if available.
-Sentence 2: One or two specific skills that match the JD.
-Sentence 3: Commitment and readiness to contribute.
+2 to 3 sentences. Mention the specific job role and company. Mention 1 or 2 matching skills. Express commitment.
 
-SPACING RULES:
-- One blank line between each section heading and its content.
-- One blank line between sections.
-- No extra blank lines inside sections.
-
-Write the complete resume now:"""
+Write the complete resume now. Use only basic English characters. No special symbols."""
 
     response = client.chat.completions.create(
         model="llama-3.3-70b-versatile",
@@ -140,6 +145,8 @@ Write the complete resume now:"""
     return response.choices[0].message.content
 
 def generate_pdf(resume_text):
+    cleaned_text = clean_text_for_pdf(resume_text)
+
     pdf = FPDF()
     pdf.add_page()
     pdf.set_margins(15, 15, 15)
@@ -152,7 +159,7 @@ def generate_pdf(resume_text):
         "CONCLUSION", "CONTACT INFORMATION"
     ]
 
-    lines = resume_text.split('\n')
+    lines = cleaned_text.split('\n')
     first_nonblank_done = False
 
     for line in lines:
@@ -162,7 +169,6 @@ def generate_pdf(resume_text):
             pdf.ln(2)
             continue
 
-        # First non-empty line = candidate name
         if not first_nonblank_done:
             first_nonblank_done = True
             pdf.set_font("Helvetica", "B", 13)
@@ -171,7 +177,6 @@ def generate_pdf(resume_text):
             pdf.ln(1)
             continue
 
-        # Section headings
         if stripped.upper() in [s.upper() for s in section_headings]:
             pdf.ln(3)
             pdf.set_font("Helvetica", "B", 9)
@@ -183,7 +188,6 @@ def generate_pdf(resume_text):
             pdf.ln(2)
             continue
 
-        # Bullet points
         if stripped.startswith("- "):
             pdf.set_font("Helvetica", "", 9)
             pdf.set_text_color(40, 40, 40)
@@ -194,7 +198,6 @@ def generate_pdf(resume_text):
             pdf.multi_cell(172, 5, content, align='L')
             continue
 
-        # Regular text
         pdf.set_font("Helvetica", "", 9)
         pdf.set_text_color(40, 40, 40)
         pdf.multi_cell(180, 5, stripped, align='L')
@@ -298,7 +301,6 @@ if st.button("Analyse Match", use_container_width=True, type="primary"):
                         resume_text, jd_text, missing_keywords
                     )
 
-                    # A4 display
                     st.markdown("""
                     <style>
                     .a4-resume {
@@ -327,7 +329,6 @@ if st.button("Analyse Match", use_container_width=True, type="primary"):
 
                     st.divider()
 
-                    # PDF Download
                     st.subheader("⬇ Download Generated Resume as PDF")
                     st.markdown("Click the button below to download your improved resume as a ready-to-send PDF.")
 
@@ -347,7 +348,6 @@ if st.button("Analyse Match", use_container_width=True, type="primary"):
 
                     st.divider()
 
-                    # Copy box
                     st.subheader("Copy Resume Text")
                     st.text_area(
                         "Select all and copy (Ctrl+A then Ctrl+C):",
